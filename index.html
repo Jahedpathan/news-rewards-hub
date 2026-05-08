@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Notifications | Modern Portal</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card: rgba(255, 255, 255, 0.05);
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body {
+            background: radial-gradient(circle at top left, #1e293b, var(--bg));
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            overflow: hidden;
+        }
+        .glass-card {
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        h1 { font-weight: 700; margin-bottom: 10px; font-size: 1.8rem; }
+        p { color: #94a3b8; font-weight: 300; line-height: 1.6; }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            width: 100%;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn:disabled { background: #334155; cursor: not-allowed; transform: none; }
+        #status-msg { margin-top: 20px; font-size: 0.9rem; display: none; color: #10b981; }
+        .icon-circle {
+            width: 60px; height: 60px; background: rgba(99, 102, 241, 0.1);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px; color: var(--primary); font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glass-card">
+        <div class="icon-circle">🔔</div>
+        <h1>Stay Updated</h1>
+        <p>Enable push notifications to receive real-time updates and exclusive alerts directly in your browser.</p>
+        <button id="sub-btn" class="btn">Enable Notifications</button>
+        <div id="status-msg">✨ System Active: Notifications Enabled!</div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQS90Ge8gc0-kukmo3Yx6Fc-UbiXSHXmU",
+            authDomain: "gym-and-firness.firebaseapp.com",
+            databaseURL: "https://gym-and-firness-default-rtdb.firebaseio.com",
+            projectId: "gym-and-firness",
+            storageBucket: "gym-and-firness.firebasestorage.app",
+            messagingSenderId: "653304180976",
+            appId: "1:653304180976:web:7b02b6a51e36c54cd49235"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const btn = document.getElementById('sub-btn');
+        const statusMsg = document.getElementById('status-msg');
+
+        // Check if already subscribed
+        if (Notification.permission === "granted") {
+            handleSubscribedUI();
+        }
+
+        btn.onclick = async () => {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+                db.ref('subscribers/' + userId).set({
+                    subscribedAt: firebase.database.ServerValue.TIMESTAMP,
+                    active: true
+                });
+                handleSubscribedUI();
+            }
+        };
+
+        function handleSubscribedUI() {
+            btn.disabled = true;
+            btn.innerText = "Subscribed";
+            statusMsg.style.display = "block";
+            startListener();
+        }
+
+        function startListener() {
+            // Listen for the latest notification entry
+            db.ref('notifications').orderByChild('timestamp').limitToLast(1).on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                
+                // Prevent showing old notifications on initial load
+                if (data.timestamp > (Date.now() - 5000)) {
+                    const n = new Notification(data.title, {
+                        body: data.message,
+                        icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/1827/1827349.png'
+                    });
+
+                    n.onclick = () => {
+                        window.focus();
+                        if (data.link) window.open(data.link, '_blank');
+                    };
+                }
+            });
+        }
+    </script>
+</body>
+</html>
